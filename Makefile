@@ -1,4 +1,4 @@
-game.com: main.asm
+game.com: main.asm graphics.asm
 	nasm -fbin -o"game.com" main.asm
 
 run:	game.com
