@@ -125,3 +125,46 @@ draw_tile:                      ; (x, y)
         mov sp, bp
         pop bp
         ret
+
+draw_sprite:                    ; (sprite, x, y)
+.sprite equ 4
+.x equ 6
+.y equ 8
+        push bp
+        mov bp, sp
+
+        mov ax, Back_buff_seg
+        mov es, ax
+
+        mov ax, [bp + .y]
+        xor dx, dx
+        mov bx, Screen_Width
+        mul bx
+        add ax, [bp + .x]
+        mov di, ax
+        
+        mov si, [bp + .sprite]
+        mov bx, Tile_Height     ; bx <- y counter
+        
+.loop:  mov cx, Tile_Width
+
+.rowloop:
+        mov al, [si]
+        test al, al
+        jz .dontwrite
+        mov [es:di], al
+.dontwrite:
+        inc si
+        inc di
+        dec cx
+        jnz .rowloop
+        
+        add di, Screen_Width - Tile_Width
+
+        dec bx
+        jnz .loop
+
+        mov sp, bp
+        pop bp
+        ret
+        
