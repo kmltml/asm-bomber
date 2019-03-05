@@ -1,5 +1,7 @@
 org 0x100
 
+[map all game.map]
+
         Level_Width equ 11
         Level_Height equ 11
 
@@ -10,14 +12,17 @@ section code
 
 start:
         mov bp, sp
-        sub sp, 6
-        .a0 equ -6
-
-        mov ax, cs
-        mov ds, ax
+        sub sp, 0xa
+.a0 equ -0xa
+.x equ 0
+.y equ 2
+        mov word [bp + .x], 0
+        mov word [bp + .y], 0
 
         mov ax, 0x0013
         int 0x10
+
+        call kb_init
 .loop:
         call wait_for_retrace
         call copy_buffer
@@ -25,14 +30,41 @@ start:
 
         call draw_tilemap
 
+        cmp byte [key_a], 0
+        jz .askip
+        cmp word [bp + .x], 0
+        jbe .askip
+        dec word [bp + .x]
+.askip: cmp byte [key_d], 0
+        jz .dskip
+        inc word [bp + .x]
+        cmp word [bp + .x], (Level_Width - 1) * Tile_Width
+        jle .dskip
+        mov word [bp + .x], (Level_Width - 1) * Tile_Width
+.dskip: cmp byte [key_w], 0
+        jz .wskip
+        dec word [bp + .y]
+        jge .wskip
+        mov word [bp + .y], 0
+.wskip: cmp byte [key_s], 0
+        jz .sskip
+        inc word [bp + .y]
+        cmp word [bp + .y], (Level_Height - 1) * Tile_Height
+        jle .sskip
+        mov word [bp + .y], (Level_Height - 1) * Tile_Height
+.sskip: 
+
         mov word [bp + .a0], sprite_bomb
-        mov word [bp + .a0 + 2], 8
-        mov word [bp + .a0 + 4], 5
+        mov ax, [bp + .x]
+        mov word [bp + .a0 + 2], ax
+        mov ax, [bp + .y]
+        mov word [bp + .a0 + 4], ax
         call draw_sprite
         
         jmp .loop
 
 %include "graphics.asm"
+%include "keyboard.asm"        
         
 tile_block:
         db 0                    ; passable
