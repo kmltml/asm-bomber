@@ -126,15 +126,43 @@ draw_tile:                      ; (x, y)
         pop bp
         ret
 
-draw_sprite:                    ; (sprite, x, y)
+draw_sprite:                    ; (sprite)
 .sprite equ 4
-.x equ 6
-.y equ 8
+.x equ -2
+.y equ -4
         push bp
         mov bp, sp
+        sub sp, 4
 
         mov ax, Back_buff_seg
         mov es, ax
+
+        mov bx, [bp + .sprite]
+
+        movzx ax, byte [bx + sprite.x]
+        shl ax, 4               ; ASSUMES Tile_Width = 16!
+        mov [bp + .x], ax
+        movzx ax, byte [bx + sprite.y]
+        shl ax, 4               ; ASSUMES Tile_Height = 16!
+        mov [bp + .y], ax
+
+        movzx cx, byte [bx + sprite.t]
+
+        movzx si, byte [bx + sprite.dir]
+        shl si, 1
+        mov ax, [.lut + si]
+        jmp ax
+.lut:   dw .none, .left, .up, .right, .down
+.left:  sub [bp + .x], cx
+        jmp .none
+.up:    sub [bp + .y], cx
+        jmp .none
+.right: add [bp + .x], cx
+        jmp .none
+.down:  add [bp + .y], cx
+        jmp .none
+.none:
+        mov si, [bx + sprite.sprite]
 
         mov ax, [bp + .y]
         xor dx, dx
@@ -143,7 +171,6 @@ draw_sprite:                    ; (sprite, x, y)
         add ax, [bp + .x]
         mov di, ax
 
-        mov si, [bp + .sprite]
         mov bx, Tile_Height     ; bx <- y counter
 
 .loop:  mov cx, Tile_Width

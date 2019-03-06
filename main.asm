@@ -30,40 +30,85 @@ start:
 
         call draw_tilemap
 
+        cmp byte [sprites + sprite.dir], 0
+        jnz .controlskip
+
         cmp byte [key_a], 0
         jz .askip
-        cmp word [bp + .x], 0
+        cmp byte [sprites + sprite.x], 0
         jbe .askip
-        dec word [bp + .x]
+        mov byte [sprites + sprite.dir], Dir_Left
 .askip: cmp byte [key_d], 0
         jz .dskip
-        inc word [bp + .x]
-        cmp word [bp + .x], (Level_Width - 1) * Tile_Width
-        jle .dskip
-        mov word [bp + .x], (Level_Width - 1) * Tile_Width
+        cmp byte [sprites + sprite.x], Level_Width - 1
+        jge .dskip
+        mov byte [sprites + sprite.dir], Dir_Right
 .dskip: cmp byte [key_w], 0
         jz .wskip
-        dec word [bp + .y]
-        jge .wskip
-        mov word [bp + .y], 0
+        cmp byte [sprites + sprite.y], 0
+        je .wskip
+        mov byte [sprites + sprite.dir], Dir_Up
 .wskip: cmp byte [key_s], 0
         jz .sskip
-        inc word [bp + .y]
-        cmp word [bp + .y], (Level_Height - 1) * Tile_Height
-        jle .sskip
-        mov word [bp + .y], (Level_Height - 1) * Tile_Height
+        cmp byte [sprites + sprite.y], Level_Height - 1
+        jge .sskip
+        mov byte [sprites + sprite.dir], Dir_Down
 
-.sskip: mov word [bp + .a0], sprite_bomb
-        mov ax, [bp + .x]
-        mov word [bp + .a0 + 2], ax
-        mov ax, [bp + .y]
-        mov word [bp + .a0 + 4], ax
+.sskip:
+.controlskip:
+
+        ; update sprite
+        cmp byte [sprites + sprite.dir], Dir_None
+        je .updateskip
+
+        inc byte [sprites + sprite.t]
+        cmp byte [sprites + sprite.t], Tile_Width
+        jne .updateskip
+
+        mov byte [sprites + sprite.t], 0
+        movzx si, byte [sprites + sprite.dir]
+        mov byte [sprites + sprite.dir], 0
+        shl si, 1
+        mov ax, [.lut + si]
+        jmp ax
+.lut:   dw .none, .left, .up, .right, .down
+.left:  dec byte [sprites + sprite.x]
+        jmp .none
+.up:    dec byte [sprites + sprite.y]
+        jmp .none
+.right: inc byte [sprites + sprite.x]
+        jmp .none
+.down:  inc byte [sprites + sprite.y]
+        jmp .none
+.none:
+
+
+.updateskip:
+        mov word [bp + .a0], sprites
         call draw_sprite
 
         jmp .loop
 
 %include "graphics.asm"
 %include "keyboard.asm"
+
+        sprite.sprite equ 0
+        sprite.x equ 2
+        sprite.y equ 3
+        sprite.dir equ 4
+        sprite.t equ 5
+        sprite.size equ 6
+
+        Dir_None equ 0
+        Dir_Left equ 1
+        Dir_Up equ 2
+        Dir_Right equ 3
+        Dir_Down equ 4
+
+sprites:
+        dw sprite_bomb
+        db 0, 0                 ; x, y
+        db 0, 0                 ; dir, t
 
 tile_block:
         db 0                    ; passable
