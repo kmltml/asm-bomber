@@ -142,10 +142,10 @@ draw_sprite:                    ; (sprite, x, y)
         mul bx
         add ax, [bp + .x]
         mov di, ax
-        
+
         mov si, [bp + .sprite]
         mov bx, Tile_Height     ; bx <- y counter
-        
+
 .loop:  mov cx, Tile_Width
 
 .rowloop:
@@ -158,7 +158,7 @@ draw_sprite:                    ; (sprite, x, y)
         inc di
         dec cx
         jnz .rowloop
-        
+
         add di, Screen_Width - Tile_Width
 
         dec bx
@@ -167,4 +167,3 @@ draw_sprite:                    ; (sprite, x, y)
         mov sp, bp
         pop bp
         ret
-        
