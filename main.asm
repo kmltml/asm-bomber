@@ -33,28 +33,37 @@ start:
         cmp byte [sprites + sprite.dir], 0
         jnz .controlskip
 
+        xor dx, dx
+
         cmp byte [key_a], 0
         jz .askip
-        cmp byte [sprites + sprite.x], 0
-        jbe .askip
-        mov byte [sprites + sprite.dir], Dir_Left
+        mov dl, Dir_Left
 .askip: cmp byte [key_d], 0
         jz .dskip
-        cmp byte [sprites + sprite.x], Level_Width - 1
-        jge .dskip
-        mov byte [sprites + sprite.dir], Dir_Right
+        mov dl, Dir_Right
 .dskip: cmp byte [key_w], 0
         jz .wskip
-        cmp byte [sprites + sprite.y], 0
-        je .wskip
-        mov byte [sprites + sprite.dir], Dir_Up
+        mov dl, Dir_Up
 .wskip: cmp byte [key_s], 0
         jz .sskip
-        cmp byte [sprites + sprite.y], Level_Height - 1
-        jge .sskip
-        mov byte [sprites + sprite.dir], Dir_Down
-
+        mov dl, Dir_Down
 .sskip:
+
+        test dl, dl
+        jz .controlskip
+
+        mov al, [sprites + sprite.x]
+        mov [bp + .a0], al
+        mov al, [sprites + sprite.y]
+        mov [bp + .a0 + 1], al
+        mov [bp + .a0 + 2], dl
+        call can_enter
+
+        test ax, ax
+        jz .controlskip
+
+        mov [sprites + sprite.dir], dl
+
 .controlskip:
 
         ; update sprite
@@ -88,6 +97,73 @@ start:
         call draw_sprite
 
         jmp .loop
+
+can_enter:                      ; (byte x, byte y, dir): bool
+.x equ 4
+.y equ 5
+.dir equ 6
+        push bp
+        mov bp, sp
+        sub sp, 4
+.xn equ -1
+.yn equ -2
+.dx equ -4
+        mov [bp + .dx], dx
+
+        mov al, [bp + .x]
+        mov [bp + .xn], al
+        mov al, [bp + .y]
+        mov [bp + .yn], al
+
+        movzx si, [bp + .dir]
+        shl si, 1
+        mov ax, [.lut + si]
+        jmp ax
+.lut:   dw .none, .left, .up, .right, .down
+.left:  dec byte [bp + .xn]
+        jmp .none
+.right: inc byte [bp + .xn]
+        jmp .none
+.up:    dec byte [bp + .yn]
+        jmp .none
+.down:  inc byte [bp + .yn]
+        jmp .none
+.none:
+        cmp byte [bp + .xn], 0
+        jl .no
+        cmp byte [bp + .xn], Level_Width
+        jge .no
+        cmp byte [bp + .yn], 0
+        jl .no
+        cmp byte [bp + .yn], Level_Height
+        jge .no
+
+        movzx ax, byte [bp + .yn]
+        xor dx, dx
+        mov bx, Level_Width
+        mul bx
+        mov si, ax
+        movzx ax, byte [bp + .xn]
+        add si, ax
+
+        movzx bx, byte [tile_map + si]
+        shl bx, 1
+        mov bx, [tiles + bx]
+        mov al, [bx + tile.passable]
+
+        test al, al
+        jz .no
+
+        mov ax, 1
+        jmp .exit
+.no:    xor ax, ax
+.exit:  mov dx, [bp + .dx]
+        mov sp, bp
+        pop bp
+        ret
+
+
+
 
 %include "graphics.asm"
 %include "keyboard.asm"
@@ -190,14 +266,14 @@ tiles:
         dw tile_ground, tile_block, tile_brick
 
 tile_map:
-        db 0, 2, 0, 2, 0, 2, 0, 2, 0, 2, 0
+        db 0, 0, 0, 2, 1, 2, 1, 2, 0, 0, 0
+        db 0, 1, 2, 1, 2, 1, 2, 1, 2, 1, 0
+        db 0, 2, 2, 2, 2, 2, 2, 2, 2, 2, 0
         db 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2
-        db 0, 2, 0, 2, 0, 2, 0, 2, 0, 2, 0
+        db 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1
         db 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2
-        db 0, 2, 0, 2, 0, 2, 0, 2, 0, 2, 0
+        db 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1
         db 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2
-        db 0, 2, 0, 2, 0, 2, 0, 2, 0, 2, 0
-        db 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2
-        db 0, 2, 0, 2, 0, 2, 0, 2, 0, 2, 0
-        db 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2
-        db 0, 2, 0, 2, 0, 2, 0, 2, 0, 2, 0
+        db 0, 2, 2, 2, 2, 2, 2, 2, 2, 2, 0
+        db 0, 1, 2, 1, 2, 1, 2, 1, 2, 1, 0
+        db 0, 0, 0, 2, 1, 2, 1, 2, 0, 0, 0
