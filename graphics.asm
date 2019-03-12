@@ -28,6 +28,7 @@ copy_buffer:                    ;()
         xor di, di
 
         mov cx, Screen_Width * Screen_Height / 4
+        cld
         rep movsd
 
         pop ds
@@ -40,6 +41,7 @@ clear_screen:                   ; ()
         xor ax, ax
         mov cx, Screen_Width * Screen_Height / 2
         xor di, di
+        cld
         rep stosw
         ret
 
@@ -115,6 +117,7 @@ draw_tile:                      ; (x, y)
 
         mov ax, Tile_Height
 .loop:  mov cx, Tile_Width / 4
+        cld
         rep movsd
 
         add di, Screen_Width - Tile_Width ; Move to next line
