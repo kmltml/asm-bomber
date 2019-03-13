@@ -16,7 +16,7 @@ wait_for_retrace:               ; ()
         jz .l2
         ret
 
-copy_buffer:                    ;()
+copy_buffer:                    ; ()
         push ds
 
         mov ax, Back_buff_seg

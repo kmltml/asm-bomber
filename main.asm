@@ -96,6 +96,18 @@ start:
         mov word [bp + .a0], sprites
         call draw_sprite
 
+        cmp byte [key_space], 0
+        jz .spaceskip
+
+        mov al, [sprites + sprite.x]
+        mov [bp + .a0], al
+        mov al, [sprites + sprite.y]
+        mov [bp + .a0 + 1], al
+        mov byte [bp + .a0 + 2], 1
+        call explode
+
+.spaceskip:
+
         jmp .loop
 
 can_enter:                      ; (byte x, byte y, dir): bool
@@ -162,8 +174,88 @@ can_enter:                      ; (byte x, byte y, dir): bool
         pop bp
         ret
 
+explode:                        ; (x, y, range)
+        push bp
+        mov bp, sp
+        sub sp, 5
+.x equ 4
+.y equ 5
+.range equ 6
+.d equ -1
+.a0 equ -5
 
+        mov byte [bp + .d], 1
 
+.loop:  mov al, [bp + .x]
+        mov [bp + .a0], al
+        mov al, [bp + .y]
+        mov [bp + .a0 + 1], al
+        mov al, [bp + .range]
+        mov [bp + .a0 + 2], al
+        mov al, [bp + .d]
+        mov [bp + .a0 + 3], al
+        call explode_ray
+
+        inc byte [bp + .d]
+        cmp byte [bp + .d], 4
+        jbe .loop
+
+        mov sp, bp
+        pop bp
+        ret
+
+explode_ray:                    ; (x, y, range, dir)
+        push bp
+        mov bp, sp
+        sub sp, 4
+.x equ 4
+.y equ 5
+.range equ 6
+.dir equ 7
+
+        movzx cx, byte [bp + .range]
+
+.loop:  movzx bx, byte [bp + .dir]
+        shl bx, 1
+        mov ax, [cs:.lut + bx]
+        jmp ax
+.lut:   dw .none, .left, .up, .right, .down
+.left:  dec byte [bp + .x]
+        js .break
+        jmp .none
+.right: inc byte [bp + .x]
+        cmp byte [bp + .x], Level_Width
+        jae .break
+        jmp .none
+.up:    dec byte [bp + .y]
+        js .break
+        jmp .none
+.down:  inc byte [bp + .y]
+        cmp byte [bp + .y], Level_Height
+        jae .break
+        jmp .none
+.none:
+        movzx ax, byte [bp + .y]
+        mov bl, Level_Width
+        mul bl
+        add al, [bp + .x]
+        movzx bx, al
+
+        movzx si, byte [tile_map + bx]
+        shl si, 1
+        mov si, [tiles + si]
+        mov al, [si + tile.destructible]
+
+        test al, al
+        jz .break
+
+        mov byte [tile_map + bx], 0
+
+        loop .loop
+.break:
+        mov sp, bp
+        pop bp
+        ret
 
 %include "graphics.asm"
 %include "keyboard.asm"
@@ -226,7 +318,7 @@ tile_brick:
         db 17,17,17,17,17,17,17,17,17,17,17,17,17,17,17,17
 
 tile_ground:
-        db 1, 0                 ; passable, destructible
+        db 1, 1                 ; passable, destructible
         db 255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255
         db 255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255
         db 255,255,185,255,255,255,185,255,255,255,185,255,255,255,185,255
@@ -246,6 +338,7 @@ tile_ground:
 
 sprite_bomb:
         db 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+        db 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
         db 0,0,0,0,0,0,0,0,0,44,44,0,0,0,0,0
         db 0,0,0,0,0,0,0,44,43,43,0,0,0,0,0,0
         db 0,0,0,0,0,0,0,41,43,41,0,0,0,0,0,0
@@ -258,7 +351,6 @@ sprite_bomb:
         db 0,0,0,0,19,22,22,22,22,22,16,0,0,0,0,0
         db 0,0,0,0,0,19,22,22,22,19,0,0,0,0,0,0
         db 0,0,0,0,0,0,19,19,19,0,0,0,0,0,0,0
-        db 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
         db 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
         db 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
 

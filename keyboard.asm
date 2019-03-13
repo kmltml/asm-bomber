@@ -4,11 +4,13 @@ Keyboard_port equ 0x60
         SC_P_S equ 0x1f
         SC_P_D equ 0x20
         SC_P_W equ 0x11
+        SC_P_SPACE equ 0x39
 
         SC_R_A equ 0x9e
         SC_R_S equ 0x9f
         SC_R_D equ 0xa0
         SC_R_W equ 0x91
+        SC_R_SPACE equ 0xB9
 
 kb_init:
         xor ax, ax
@@ -43,6 +45,10 @@ kbint:  push ax
         je .dp
         cmp al, SC_R_D
         je .dr
+        cmp al, SC_P_SPACE
+        je .spacep
+        cmp al, SC_R_SPACE
+        je .spacer
         jmp .quit
 
 .ap:    mov byte [key_a], 1
@@ -61,6 +67,12 @@ kbint:  push ax
         jmp .quit
 .dr:    mov byte [key_d], 0
         jmp .quit
+.spacep:
+        mov byte [key_space], 1
+        jmp .quit
+.spacer:
+        mov byte [key_space], 0
+        jmp .quit
 .quit:
         mov al, 0x20
         out 0x20, al
@@ -73,3 +85,4 @@ key_a:  db 0
 key_s:  db 0
 key_d:  db 0
 key_w:  db 0
+key_space: db 0
