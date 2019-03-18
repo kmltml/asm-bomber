@@ -23,6 +23,10 @@ start:
         int 0x10
 
         call kb_init
+
+        mov word [bp + .a0], bomb_filename
+        mov word [bp + .a0 + 2], sprite_bomb
+        call load_sprite
 .loop:
         call wait_for_retrace
         call copy_buffer
@@ -259,6 +263,7 @@ explode_ray:                    ; (x, y, range, dir)
 
 %include "graphics.asm"
 %include "keyboard.asm"
+%include "bmp.asm"
 
         sprite.sprite equ 0
         sprite.x equ 2
@@ -272,6 +277,9 @@ explode_ray:                    ; (x, y, range, dir)
         Dir_Up equ 2
         Dir_Right equ 3
         Dir_Down equ 4
+
+bomb_filename:
+        db "bomb.bmp", 0
 
 sprites:
         dw sprite_bomb
@@ -336,23 +344,7 @@ tile_ground:
         db 255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255
         db 255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255
 
-sprite_bomb:
-        db 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
-        db 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
-        db 0,0,0,0,0,0,0,0,0,44,44,0,0,0,0,0
-        db 0,0,0,0,0,0,0,44,43,43,0,0,0,0,0,0
-        db 0,0,0,0,0,0,0,41,43,41,0,0,0,0,0,0
-        db 0,0,0,0,0,0,16,41,41,0,0,0,0,0,0,0
-        db 0,0,0,0,0,16,22,185,22,16,0,0,0,0,0,0
-        db 0,0,0,0,16,22,22,185,22,22,16,0,0,0,0,0
-        db 0,0,0,16,22,22,22,22,22,22,22,16,0,0,0,0
-        db 0,0,0,19,22,22,22,22,22,22,22,16,0,0,0,0
-        db 0,0,0,19,22,22,22,22,22,22,22,16,0,0,0,0
-        db 0,0,0,0,19,22,22,22,22,22,16,0,0,0,0,0
-        db 0,0,0,0,0,19,22,22,22,19,0,0,0,0,0,0
-        db 0,0,0,0,0,0,19,19,19,0,0,0,0,0,0,0
-        db 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
-        db 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+sprite_bomb: times 16 * 16 db 0
 
 tiles:
         dw tile_ground, tile_block, tile_brick
