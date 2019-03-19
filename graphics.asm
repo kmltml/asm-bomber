@@ -354,6 +354,30 @@ is_explosion_tile:              ; (x, y)
         pop bp
         ret
 
+draw_bombs:                     ; ()
+        push bp
+        mov bp, sp
+        sub sp, 6
+.a0 equ -6
+.i equ -2
+        mov word [bp + .i], Max_Bomb_Count
+.loop:  mov bx, [bp + .i]
+        shl bx, 3
+        cmp word [bombs + bx], 0
+        je .continue
+
+        lea bx, [bombs + bx]
+        mov [bp + .a0], bx
+        call draw_sprite
+
+.continue:
+        dec word [bp + .i]
+        jns .loop
+
+        mov sp, bp
+        pop bp
+        ret
+
 expl_c: times Tile_Width * Tile_Height db 0
 expl_h: times Tile_Width * Tile_Height db 0
 expl_v: times Tile_Width * Tile_Height db 0

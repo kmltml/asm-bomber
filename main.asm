@@ -9,6 +9,7 @@ org 0x100
         Tile_Height equ 16
 
         Explosion_Duration equ 30
+        Bomb_Ticks equ 90
 
 section code
 
@@ -104,6 +105,10 @@ start:
 
         call update_explosion_tiles
 
+        call draw_bombs
+
+        call update_bombs
+
         cmp byte [key_space], 0
         jz .spaceskip
 
@@ -111,8 +116,7 @@ start:
         mov [bp + .a0], al
         mov al, [sprites + sprite.y]
         mov [bp + .a0 + 1], al
-        mov byte [bp + .a0 + 2], 1
-        call explode
+        call place_bomb
 
 .spaceskip:
 
@@ -178,6 +182,71 @@ can_enter:                      ; (byte x, byte y, dir): bool
         jmp .exit
 .no:    xor ax, ax
 .exit:  mov dx, [bp + .dx]
+        mov sp, bp
+        pop bp
+        ret
+
+place_bomb:                     ; (x, y)
+        push bp
+        mov bp, sp
+.x equ 4
+.y equ 5
+        mov bx, bombs
+        mov cx, Max_Bomb_Count
+.loop:  cmp word [bx + sprite.sprite], 0
+        je .found
+
+        add bx, bomb.size
+        loop .loop
+
+        mov sp, bp
+        pop bp
+        ret
+
+.found: mov word [bx + sprite.sprite], sprite_bomb
+        mov al, [bp + .x]
+        mov [bx + sprite.x], al
+        mov al, [bp + .y]
+        mov [bx + sprite.y], al
+        mov byte [bx + sprite.dir], Dir_None
+        mov byte [bx + sprite.t], 0
+        mov byte [bx + bomb.ticks], Bomb_Ticks
+
+        mov sp, bp
+        pop bp
+        ret
+
+update_bombs:                   ; ()
+        push bp
+        mov bp, sp
+        sub sp, 6
+.i equ -1
+.ptr equ -3
+.a0 equ -6
+
+        mov byte [bp + .i], Max_Bomb_Count
+        mov word [bp + .ptr], bombs
+
+.loop:  mov bx, [bp + .ptr]
+        cmp word [bx], 0
+        jz .continue
+
+        dec word [bx + bomb.ticks]
+        jnz .continue
+
+        mov word [bx + sprite.sprite], 0
+        mov al, [bx + sprite.x]
+        mov [bp + .a0], al
+        mov al, [bx + sprite.y]
+        mov [bp + .a0 + 1], al
+        mov byte [bp + .a0 + 2], 1
+        call explode
+
+.continue:
+        add word [bp + .ptr], bomb.size
+        dec byte [bp + .i]
+        jnz .loop
+
         mov sp, bp
         pop bp
         ret
@@ -306,6 +375,14 @@ sprites:
         dw sprite_bomb
         db 0, 0                 ; x, y
         db 0, 0                 ; dir, t
+
+        bomb.ticks equ 6
+        bomb.size equ 8
+
+        Max_Bomb_Count equ 16
+
+bombs:  times Max_Bomb_Count * bomb.size db 0
+
 
 tile_block:
         db 0                    ; passable
