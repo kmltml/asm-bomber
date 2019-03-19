@@ -66,3 +66,59 @@ load_sprite:                    ; (name, dest)
         mov sp, bp
         pop bp
         ret
+
+load_sprites:                   ; ()
+        push bp
+        mov bp, sp
+        sub sp, 6
+        push es
+.i equ -4
+.a0 equ -8
+        mov word [bp + .i], sprite_files
+
+        mov ax, ds
+        mov es, ax
+
+.loop:  mov di, [bp + .i]
+        cmp word [di], 0
+        jz .exit
+
+        cld
+
+        mov [bp + .a0], di
+
+        mov cx, 0xffff
+        xor al, al
+        repnz scasb
+
+        mov ax, [di]
+        mov [bp + .a0 + 2], ax
+        lea ax, [di + 2]
+        mov [bp + .i], ax
+
+        push word .loop
+        jmp load_sprite
+
+.exit:  pop es
+        mov sp, bp
+        pop bp
+        ret
+
+sprite_files:
+        db "bomb.bmp", 0
+        dw sprite_bomb
+        db "expl_c.bmp", 0
+        dw expl_c
+        db "expl_h.bmp", 0
+        dw expl_h
+        db "expl_v.bmp", 0
+        dw expl_v
+        db "expl_u.bmp", 0
+        dw expl_u
+        db "expl_b.bmp", 0
+        dw expl_b
+        db "expl_l.bmp", 0
+        dw expl_l
+        db "expl_r.bmp", 0
+        dw expl_r
+        dw 0

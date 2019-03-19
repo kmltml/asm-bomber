@@ -8,6 +8,8 @@ org 0x100
         Tile_Width equ 16
         Tile_Height equ 16
 
+        Explosion_Duration equ 30
+
 section code
 
 start:
@@ -24,9 +26,7 @@ start:
 
         call kb_init
 
-        mov word [bp + .a0], bomb_filename
-        mov word [bp + .a0 + 2], sprite_bomb
-        call load_sprite
+        call load_sprites
 .loop:
         call wait_for_retrace
         call copy_buffer
@@ -99,6 +99,10 @@ start:
 .updateskip:
         mov word [bp + .a0], sprites
         call draw_sprite
+
+        call draw_explosion_tiles
+
+        call update_explosion_tiles
 
         cmp byte [key_space], 0
         jz .spaceskip
@@ -190,6 +194,13 @@ explode:                        ; (x, y, range)
 
         mov byte [bp + .d], 1
 
+        mov al, [bp + .y]
+        mov bl, Level_Width
+        mul bl
+        add al, [bp + .x]
+        mov bx, ax
+        mov byte [explosion_tiles + bx], Explosion_Duration
+
 .loop:  mov al, [bp + .x]
         mov [bp + .a0], al
         mov al, [bp + .y]
@@ -254,11 +265,24 @@ explode_ray:                    ; (x, y, range, dir)
         jz .break
 
         mov byte [tile_map + bx], 0
+        mov byte [explosion_tiles + bx], Explosion_Duration
 
         loop .loop
 .break:
         mov sp, bp
         pop bp
+        ret
+
+update_explosion_tiles:         ; ()
+        mov cx, Level_Width * Level_Height
+.loop:  mov bx, cx
+        cmp byte [explosion_tiles + bx - 1], 0
+        je .skip
+
+        dec byte [explosion_tiles + bx - 1]
+
+.skip:  loop .loop
+
         ret
 
 %include "graphics.asm"
@@ -277,9 +301,6 @@ explode_ray:                    ; (x, y, range, dir)
         Dir_Up equ 2
         Dir_Right equ 3
         Dir_Down equ 4
-
-bomb_filename:
-        db "bomb.bmp", 0
 
 sprites:
         dw sprite_bomb
@@ -361,3 +382,6 @@ tile_map:
         db 0, 2, 2, 2, 2, 2, 2, 2, 2, 2, 0
         db 0, 1, 2, 1, 2, 1, 2, 1, 2, 1, 0
         db 0, 0, 0, 2, 1, 2, 1, 2, 0, 0, 0
+
+explosion_tiles:
+        times Level_Width * Level_Height db 0

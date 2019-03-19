@@ -197,3 +197,167 @@ draw_sprite:                    ; (sprite)
         mov sp, bp
         pop bp
         ret
+
+draw_explosion_tiles:
+        push bp
+        mov bp, sp
+        sub sp, 4
+.x equ -1
+.y equ -2
+.a0 equ -4
+
+        mov byte [bp + .y], Level_Width - 1
+
+.loopy: mov byte [bp + .x], Level_Width - 1
+.loopx: mov al, [bp + .x]
+        mov [bp + .a0], al
+        mov al, [bp + .y]
+        mov [bp + .a0 + 1], al
+        call draw_explosion_tile
+        dec byte [bp + .x]
+        jns .loopx
+
+        dec byte [bp + .y]
+        jns .loopy
+
+        mov sp, bp
+        pop bp
+        ret
+
+draw_explosion_tile:            ; (x, y)
+        push bp
+        mov bp, sp
+        sub sp, 3
+.x equ 4
+.y equ 5
+.bf equ -1
+.a0 equ -3
+        mov al, [bp + .x]
+        mov [bp + .a0], al
+        mov al, [bp + .y]
+        mov [bp + .a0 + 1], al
+        call is_explosion_tile
+        test ax, ax
+        jz .exit
+
+        mov byte [bp + .bf], 0
+
+        mov al, [bp + .x]
+        dec al
+        mov [bp + .a0], al
+        mov al, [bp + .y]
+        mov [bp + .a0 + 1], al
+        call is_explosion_tile
+        or [bp + .bf], al
+
+        mov al, [bp + .x]
+        mov [bp + .a0], al
+        mov al, [bp + .y]
+        dec al
+        mov [bp + .a0 + 1], al
+        call is_explosion_tile
+        shl al, 1
+        or [bp + .bf], al
+
+        mov al, [bp + .x]
+        inc al
+        mov [bp + .a0], al
+        mov al, [bp + .y]
+        mov [bp + .a0 + 1], al
+        call is_explosion_tile
+        shl al, 2
+        or [bp + .bf], al
+
+        mov al, [bp + .x]
+        mov [bp + .a0], al
+        mov al, [bp + .y]
+        inc al
+        mov [bp + .a0 + 1], al
+        call is_explosion_tile
+        shl al, 3
+        or [bp + .bf], al
+
+        movzx bx, byte [bp + .bf]
+        shl bx, 1
+        mov si, [cs:.lut + bx]
+
+        movzx ax, byte [bp + .y]
+        xor dx, dx
+        mov bx, Screen_Width * Tile_Height
+        mul bx
+        mov di, ax
+        movzx ax, byte [bp + .x]
+        shl ax, 4
+        add di, ax
+
+        mov bx, Tile_Height     ; bx <- y counter
+
+.loop:  mov cx, Tile_Width
+
+.rowloop:
+        mov al, [si]
+        test al, al
+        jz .dontwrite
+        mov [es:di], al
+.dontwrite:
+        inc si
+        inc di
+        dec cx
+        jnz .rowloop
+
+        add di, Screen_Width - Tile_Width
+
+        dec bx
+        jnz .loop
+
+.exit:  mov sp, bp
+        pop bp
+        ret
+
+.lut:   dw expl_c, expl_r, expl_b, expl_c, expl_l, expl_h, expl_c, expl_c
+        dw expl_u, expl_c, expl_v, expl_c, expl_c, expl_c, expl_c, expl_c
+
+
+
+
+is_explosion_tile:              ; (x, y)
+        push bp
+        mov bp, sp
+.x equ 4
+.y equ 5
+        cmp byte [bp + .x], 0
+        jl .no
+        cmp byte [bp + .x], Level_Width
+        jge .no
+        cmp byte [bp + .y], 0
+        jl .no
+        cmp byte [bp + .y], Level_Height
+        jge .no
+
+        movzx ax, byte [bp + .y]
+        mov bl, Level_Width
+        mul bl
+        movzx bx, byte [bp + .x]
+        add bx, ax
+
+        cmp byte [explosion_tiles + bx], 0
+        je .no
+
+        mov ax, 1
+        mov sp, bp
+        pop bp
+        ret
+
+.no:
+        xor ax, ax
+        mov sp, bp
+        pop bp
+        ret
+
+expl_c: times Tile_Width * Tile_Height db 0
+expl_h: times Tile_Width * Tile_Height db 0
+expl_v: times Tile_Width * Tile_Height db 0
+expl_u: times Tile_Width * Tile_Height db 0
+expl_b: times Tile_Width * Tile_Height db 0
+expl_l: times Tile_Width * Tile_Height db 0
+expl_r: times Tile_Width * Tile_Height db 0
