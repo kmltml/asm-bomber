@@ -360,9 +360,8 @@ draw_bombs:                     ; ()
         sub sp, 6
 .a0 equ -6
 .i equ -2
-        mov word [bp + .i], Max_Bomb_Count
+        mov word [bp + .i], (Max_Bomb_Count - 1) * bomb.size
 .loop:  mov bx, [bp + .i]
-        shl bx, 3
         cmp word [bombs + bx], 0
         je .continue
 
@@ -371,7 +370,7 @@ draw_bombs:                     ; ()
         call draw_sprite
 
 .continue:
-        dec word [bp + .i]
+        sub word [bp + .i], bomb.size
         jns .loop
 
         mov sp, bp

@@ -35,7 +35,7 @@ start:
 
         call draw_tilemap
 
-        cmp byte [sprites + sprite.dir], 0
+        cmp byte [players + sprite.dir], 0
         jnz .controlskip
 
         xor dx, dx
@@ -57,9 +57,9 @@ start:
         test dl, dl
         jz .controlskip
 
-        mov al, [sprites + sprite.x]
+        mov al, [players + sprite.x]
         mov [bp + .a0], al
-        mov al, [sprites + sprite.y]
+        mov al, [players + sprite.y]
         mov [bp + .a0 + 1], al
         mov [bp + .a0 + 2], dl
         call can_enter
@@ -67,38 +67,38 @@ start:
         test ax, ax
         jz .controlskip
 
-        mov [sprites + sprite.dir], dl
+        mov [players + sprite.dir], dl
 
 .controlskip:
 
         ; update sprite
-        cmp byte [sprites + sprite.dir], Dir_None
+        cmp byte [players + sprite.dir], Dir_None
         je .updateskip
 
-        inc byte [sprites + sprite.t]
-        cmp byte [sprites + sprite.t], Tile_Width
+        inc byte [players + sprite.t]
+        cmp byte [players + sprite.t], Tile_Width
         jne .updateskip
 
-        mov byte [sprites + sprite.t], 0
-        movzx si, byte [sprites + sprite.dir]
-        mov byte [sprites + sprite.dir], 0
+        mov byte [players + sprite.t], 0
+        movzx si, byte [players + sprite.dir]
+        mov byte [players + sprite.dir], 0
         shl si, 1
         mov ax, [.lut + si]
         jmp ax
 .lut:   dw .none, .left, .up, .right, .down
-.left:  dec byte [sprites + sprite.x]
+.left:  dec byte [players + sprite.x]
         jmp .none
-.up:    dec byte [sprites + sprite.y]
+.up:    dec byte [players + sprite.y]
         jmp .none
-.right: inc byte [sprites + sprite.x]
+.right: inc byte [players + sprite.x]
         jmp .none
-.down:  inc byte [sprites + sprite.y]
+.down:  inc byte [players + sprite.y]
         jmp .none
 .none:
 
 
 .updateskip:
-        mov word [bp + .a0], sprites
+        mov word [bp + .a0], players
         call draw_sprite
 
         call draw_explosion_tiles
@@ -112,10 +112,16 @@ start:
         cmp byte [key_space], 0
         jz .spaceskip
 
-        mov al, [sprites + sprite.x]
+        cmp byte [players + player.bombsrem], 0
+        je .spaceskip
+
+        dec byte [players + player.bombsrem]
+
+        mov al, [players + sprite.x]
         mov [bp + .a0], al
-        mov al, [sprites + sprite.y]
+        mov al, [players + sprite.y]
         mov [bp + .a0 + 1], al
+        mov byte [bp + .a0 + 2], 0
         call place_bomb
 
 .spaceskip:
@@ -205,11 +211,12 @@ can_enter:                      ; (byte x, byte y, dir): bool
         pop bp
         ret
 
-place_bomb:                     ; (x, y)
+place_bomb:                     ; (x, y, player)
         push bp
         mov bp, sp
 .x equ 4
 .y equ 5
+.player equ 6
         mov bx, bombs
         mov cx, Max_Bomb_Count
 .loop:  cmp word [bx + sprite.sprite], 0
@@ -230,6 +237,12 @@ place_bomb:                     ; (x, y)
         mov byte [bx + sprite.dir], Dir_None
         mov byte [bx + sprite.t], 0
         mov byte [bx + bomb.ticks], Bomb_Ticks
+        mov al, [bp + .player]
+        mov [bx + bomb.player], al
+        movzx di, al
+        shl di, 3
+        mov al, [players + di + player.range]
+        mov [bx + bomb.range], al
 
         mov sp, bp
         pop bp
@@ -250,15 +263,20 @@ update_bombs:                   ; ()
         cmp word [bx], 0
         jz .continue
 
-        dec word [bx + bomb.ticks]
+        dec byte [bx + bomb.ticks]
         jnz .continue
+
+        movzx si, byte [bx + bomb.player]
+        shl si, 3
+        inc byte [players + si + player.bombsrem]
 
         mov word [bx + sprite.sprite], 0
         mov al, [bx + sprite.x]
         mov [bp + .a0], al
         mov al, [bx + sprite.y]
         mov [bp + .a0 + 1], al
-        mov byte [bp + .a0 + 2], 1
+        mov al, [bx + bomb.range]
+        mov [bp + .a0 + 2], al
         call explode
 
 .continue:
@@ -390,13 +408,19 @@ update_explosion_tiles:         ; ()
         Dir_Right equ 3
         Dir_Down equ 4
 
-sprites:
+        player.bombsrem equ 6
+        player.range equ 7
+
+players:
         dw sprite_bomb
         db 0, 0                 ; x, y
         db 0, 0                 ; dir, t
+        db 1, 1                 ; bombsrem, range
 
         bomb.ticks equ 6
-        bomb.size equ 8
+        bomb.player equ 7
+        bomb.range equ 8
+        bomb.size equ 10
 
         Max_Bomb_Count equ 16
 
