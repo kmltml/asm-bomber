@@ -178,6 +178,25 @@ can_enter:                      ; (byte x, byte y, dir): bool
         test al, al
         jz .no
 
+        mov al, [bp + .xn]
+        mov ah, [bp + .yn]
+
+        mov bx, bombs
+        mov cx, Max_Bomb_Count
+.bombloop:
+        cmp word [bx + sprite.sprite], 0
+        je .bombcont
+
+        cmp [bx + sprite.x], al
+        jne .bombcont
+
+        cmp [bx + sprite.y], ah
+        je .no
+
+.bombcont:
+        add bx, bomb.size
+        loop .bombloop
+
         mov ax, 1
         jmp .exit
 .no:    xor ax, ax
