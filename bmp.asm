@@ -121,4 +121,6 @@ sprite_files:
         dw expl_l
         db "expl_r.bmp", 0
         dw expl_r
+        db "heart.bmp", 0
+        dw heart
         dw 0

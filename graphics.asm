@@ -384,3 +384,5 @@ expl_u: times Tile_Width * Tile_Height db 0
 expl_b: times Tile_Width * Tile_Height db 0
 expl_l: times Tile_Width * Tile_Height db 0
 expl_r: times Tile_Width * Tile_Height db 0
+
+heart: times 16 * 16 db 0

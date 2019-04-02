@@ -35,19 +35,27 @@ start:
 
         call draw_tilemap
 
-        mov word [bp + .a0], players
+        mov word [bp + .a0], player1
         mov word [bp + .a0 + 2], key_player1
         call update_player
 
-        mov word [bp + .a0], players + player.size
+        mov word [bp + .a0], player2
         mov word [bp + .a0 + 2], key_player2
         call update_player
 
-        mov word [bp + .a0], players
+        mov word [bp + .a0], player1
         call draw_sprite
 
-        mov word [bp + .a0], players + player.size
+        mov word [bp + .a0], player2
         call draw_sprite
+
+        mov word [bp + .a0], player1
+        mov byte [bp + .a0 + 2], 0
+        call draw_player_stats
+
+        mov word [bp + .a0], player2
+        mov byte [bp + .a0 + 2], 4
+        call draw_player_stats
 
         call draw_explosion_tiles
 
@@ -138,11 +146,11 @@ update_player:                  ; (*player, *controls)
 
         mov bx, [bp + .controls]
         cmp byte [bx + key.place], 0
-        jz .updateskip
+        jz .bombskip
 
         mov bx, [bp + .player]
         cmp byte [bx + player.bombsrem], 0
-        je .updateskip
+        je .bombskip
 
         dec byte [bx + player.bombsrem]
 
@@ -153,7 +161,25 @@ update_player:                  ; (*player, *controls)
         mov [bp + .a0 + 2], bx
         call place_bomb
 
-.updateskip:
+.bombskip:
+
+        mov bx, [bp + .player]
+        mov al, [bx + sprite.x]
+        mov [bp + .a0], al
+        mov al, [bx + sprite.y]
+        mov [bp + .a0 + 1], al
+        call is_explosion_tile
+
+        test ax, ax
+        jz .hurtskip
+
+        mov bx, [bp + .player]
+        cmp byte [bx + player.lives], 0
+        je .hurtskip
+
+        dec byte [bx + player.lives]
+
+.hurtskip:
 
         mov sp, bp
         pop bp
@@ -276,6 +302,42 @@ place_bomb:                     ; (x, y, player)
         mov sp, bp
         pop bp
         ret
+
+draw_player_stats:              ; (*player, y)
+        push bp
+        mov bp, sp
+        sub sp, sprite.size + 4
+.player equ 4
+.y equ 6
+.i equ -2
+.sprite equ -sprite.size - 2
+.a0 equ -sprite.size - 4
+
+        mov word [bp + .sprite + sprite.sprite], heart
+        mov byte [bp + .sprite + sprite.dir], 0
+        mov al, [bp + .y]
+        mov [bp + .sprite + sprite.y], al
+        mov byte [bp + .sprite + sprite.x], Level_Width + 2
+
+        mov bx, [bp + .player]
+        mov al, [bx + player.lives]
+        mov [bp + .i], al
+
+.loop:  cmp byte [bp + .i], 0
+        je .exit
+
+        dec byte [bp + .i]
+        lea ax, [bp + .sprite]
+        mov [bp + .a0], ax
+        call draw_sprite
+
+        inc byte [bp + .sprite + sprite.x]
+        jmp .loop
+
+.exit:  mov sp, bp
+        pop bp
+        ret
+
 
 update_bombs:                   ; ()
         push bp
@@ -438,18 +500,21 @@ update_explosion_tiles:         ; ()
 
         player.bombsrem equ 6
         player.range equ 7
-        player.size equ 8
+        player.lives equ 8
+        player.size equ 9
 
-players:
+player1:
         dw sprite_bomb
         db 0, 0                 ; x, y
         db 0, 0                 ; dir, t
-        db 1, 1                 ; bombsrem, range
+        db 1, 1, 3              ; bombsrem, range, lives
+
+player2:
         dw sprite_bomb
         db Level_Width - 1      ; x
         db Level_Height - 1     ; y
         db 0, 0                 ; dir, t
-        db 1, 1                 ; bombsrem, range
+        db 1, 1, 3              ; bombsrem, range, lives
 
         bomb.ticks equ 6
         bomb.range equ 7
