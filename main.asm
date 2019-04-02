@@ -10,6 +10,7 @@ org 0x100
 
         Explosion_Duration equ 30
         Bomb_Ticks equ 90
+        Invincibility_Time equ 255
 
 section code
 
@@ -43,11 +44,17 @@ start:
         mov word [bp + .a0 + 2], key_player2
         call update_player
 
+        test byte [player1 + player.invtime], 0x8
+        jnz .p1drawskip
         mov word [bp + .a0], player1
         call draw_sprite
+.p1drawskip:
 
+        test byte [player2 + player.invtime], 0x8
+        jnz .p2drawskip
         mov word [bp + .a0], player2
         call draw_sprite
+.p2drawskip:
 
         mov word [bp + .a0], player1
         mov byte [bp + .a0 + 2], 0
@@ -170,16 +177,24 @@ update_player:                  ; (*player, *controls)
         mov [bp + .a0 + 1], al
         call is_explosion_tile
 
+        mov bx, [bp + .player]
         test ax, ax
         jz .hurtskip
 
-        mov bx, [bp + .player]
         cmp byte [bx + player.lives], 0
         je .hurtskip
+        cmp byte [bx + player.invtime], 0
+        jne .hurtskip
 
         dec byte [bx + player.lives]
+        mov byte [bx + player.invtime], Invincibility_Time
 
 .hurtskip:
+        cmp byte [bx + player.invtime], 0
+        je .invskip
+
+        dec byte [bx + player.invtime]
+.invskip:
 
         mov sp, bp
         pop bp
@@ -501,20 +516,21 @@ update_explosion_tiles:         ; ()
         player.bombsrem equ 6
         player.range equ 7
         player.lives equ 8
-        player.size equ 9
+        player.invtime equ 9
+        player.size equ 10
 
 player1:
         dw sprite_bomb
         db 0, 0                 ; x, y
         db 0, 0                 ; dir, t
-        db 1, 1, 3              ; bombsrem, range, lives
+        db 1, 1, 3, 0           ; bombsrem, range, lives, invtime
 
 player2:
         dw sprite_bomb
         db Level_Width - 1      ; x
         db Level_Height - 1     ; y
         db 0, 0                 ; dir, t
-        db 1, 1, 3              ; bombsrem, range, lives
+        db 1, 1, 3, 0           ; bombsrem, range, lives, invtime
 
         bomb.ticks equ 6
         bomb.range equ 7
