@@ -123,4 +123,10 @@ sprite_files:
         dw expl_r
         db "heart.bmp", 0
         dw heart
+        db "ground.bmp", 0
+        dw tile_ground + tile.pixels
+        db "brick.bmp", 0
+        dw tile_brick + tile.pixels
+        db "block.bmp", 0
+        dw tile_block + tile.pixels
         dw 0
