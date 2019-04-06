@@ -386,3 +386,6 @@ expl_l: times Tile_Width * Tile_Height db 0
 expl_r: times Tile_Width * Tile_Height db 0
 
 heart: times 16 * 16 db 0
+
+player1_sprite: times 16 * 16 db 0
+player2_sprite: times 16 * 16 db 0

@@ -129,4 +129,8 @@ sprite_files:
         dw tile_brick + tile.pixels
         db "block.bmp", 0
         dw tile_block + tile.pixels
+        db "player1.bmp", 0
+        dw player1_sprite
+        db "player2.bmp", 0
+        dw player2_sprite
         dw 0

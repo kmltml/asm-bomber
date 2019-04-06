@@ -520,13 +520,13 @@ update_explosion_tiles:         ; ()
         player.size equ 10
 
 player1:
-        dw sprite_bomb
+        dw player1_sprite
         db 0, 0                 ; x, y
         db 0, 0                 ; dir, t
         db 1, 1, 3, 0           ; bombsrem, range, lives, invtime
 
 player2:
-        dw sprite_bomb
+        dw player2_sprite
         db Level_Width - 1      ; x
         db Level_Height - 1     ; y
         db 0, 0                 ; dir, t
