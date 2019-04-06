@@ -14,16 +14,12 @@ org 0x100
 
 section code
 
-start:
+start:                          ; game entry point
         mov bp, sp
         sub sp, 0xa
 .a0 equ -0xa
-.x equ 0
-.y equ 2
-        mov word [bp + .x], 0
-        mov word [bp + .y], 0
 
-        mov ax, 0x0013
+        mov ax, 0x0013          ; switch graphics to 320 x 200 256-color mode
         int 0x10
 
         call kb_init
@@ -36,32 +32,32 @@ start:
 
         call draw_tilemap
 
-        mov word [bp + .a0], player1
-        mov word [bp + .a0 + 2], key_player1
+        mov word [bp + .a0], player1 ; *player
+        mov word [bp + .a0 + 2], key_player1 ; *controls
         call update_player
 
-        mov word [bp + .a0], player2
-        mov word [bp + .a0 + 2], key_player2
+        mov word [bp + .a0], player2 ; *player
+        mov word [bp + .a0 + 2], key_player2 ; *controls
         call update_player
 
-        test byte [player1 + player.invtime], 0x8
+        test byte [player1 + player.invtime], 0x8 ; blink every 8 ticks when invincible
         jnz .p1drawskip
-        mov word [bp + .a0], player1
+        mov word [bp + .a0], player1 ; sprite
         call draw_sprite
 .p1drawskip:
 
         test byte [player2 + player.invtime], 0x8
         jnz .p2drawskip
-        mov word [bp + .a0], player2
+        mov word [bp + .a0], player2 ; sprite
         call draw_sprite
 .p2drawskip:
 
-        mov word [bp + .a0], player1
-        mov byte [bp + .a0 + 2], 0
+        mov word [bp + .a0], player1 ; player
+        mov byte [bp + .a0 + 2], 0   ; y
         call draw_player_stats
 
-        mov word [bp + .a0], player2
-        mov byte [bp + .a0 + 2], 4
+        mov word [bp + .a0], player2 ; player
+        mov byte [bp + .a0 + 2], 4   ; y
         call draw_player_stats
 
         call draw_explosion_tiles
@@ -72,7 +68,7 @@ start:
 
         call update_bombs
 
-        cmp byte [player1 + player.lives], 0
+        cmp byte [player1 + player.lives], 0 ; check for victory
         je .player2_won
 
         cmp byte [player2 + player.lives], 0
@@ -101,10 +97,10 @@ start:
         pop bp
 
 .endloop1:
-        cmp byte [key_space], 0
+        cmp byte [key_space], 0 ; wait until space is released...
         jne .endloop1
 .endloop2:
-        cmp byte [key_space], 0
+        cmp byte [key_space], 0 ; ...and then pressed again
         je .endloop2
 
         mov ax, 0x0003          ; set the video mode back to default text mode
@@ -127,17 +123,19 @@ player1_winmsg:
 player2_winmsg:
         db "Player 2 won!"
 
+;; Update the player based on inputs and other game state
 update_player:                  ; (*player, *controls)
         push bp
         mov bp, sp
-        sub sp, 4
+        sub sp, 6
 .player equ 4
 .controls equ 6
-.a0 equ -4
+.dir equ -2
+.a0 equ -6
 
         mov bx, [bp + .player]
 
-        cmp byte [bx + sprite.dir], 0
+        cmp byte [bx + sprite.dir], 0 ; accept input only when not moving already
         jnz .controlskip
 
         xor dx, dx
@@ -157,36 +155,39 @@ update_player:                  ; (*player, *controls)
         jz .dskip
         mov dl, Dir_Down
 .dskip:
-
         test dl, dl
-        jz .controlskip
+        jz .controlskip         ; don't do anything when no control key is pressed
+
+        mov [bp + .dir], dl
 
         mov bx, [bp + .player]
 
         mov al, [bx + sprite.x]
-        mov [bp + .a0], al
+        mov [bp + .a0], al      ; x
         mov al, [bx + sprite.y]
-        mov [bp + .a0 + 1], al
-        mov [bp + .a0 + 2], dl
+        mov [bp + .a0 + 1], al  ; y
+        mov [bp + .a0 + 2], dl  ; dir
         call can_enter
 
         test ax, ax
-        jz .controlskip
+        jz .controlskip         ; don't do anything, if the destination tile can't be entered
 
         mov bx, [bp + .player]
+        mov dl, [bp + .dir]
         mov [bx + sprite.dir], dl
 
 .controlskip:
 
         mov bx, [bp + .player]
-        ; update sprite
+
         cmp byte [bx + sprite.dir], Dir_None
         je .none
 
-        inc byte [bx + sprite.t]
+        inc byte [bx + sprite.t] ; update move animation
         cmp byte [bx + sprite.t], Tile_Width
         jne .none
 
+        ; animation done, update position
         mov byte [bx + sprite.t], 0
         movzx si, byte [bx + sprite.dir]
         mov byte [bx + sprite.dir], 0
@@ -205,29 +206,29 @@ update_player:                  ; (*player, *controls)
 .none:
 
         mov bx, [bp + .controls]
-        cmp byte [bx + key.place], 0
+        cmp byte [bx + key.place], 0 ; place bomb if the key is pressed...
         jz .bombskip
 
         mov bx, [bp + .player]
-        cmp byte [bx + player.bombsrem], 0
+        cmp byte [bx + player.bombsrem], 0 ; ...and the player has a bomb to place
         je .bombskip
 
         dec byte [bx + player.bombsrem]
 
         mov al, [bx + sprite.x]
-        mov [bp + .a0], al
+        mov [bp + .a0], al      ; x
         mov al, [bx + sprite.y]
-        mov [bp + .a0 + 1], al
-        mov [bp + .a0 + 2], bx
+        mov [bp + .a0 + 1], al  ; y
+        mov [bp + .a0 + 2], bx  ; player pointer
         call place_bomb
 
 .bombskip:
 
         mov bx, [bp + .player]
         mov al, [bx + sprite.x]
-        mov [bp + .a0], al
+        mov [bp + .a0], al      ; x
         mov al, [bx + sprite.y]
-        mov [bp + .a0 + 1], al
+        mov [bp + .a0 + 1], al  ; y
         call is_explosion_tile
 
         mov bx, [bp + .player]
@@ -246,7 +247,7 @@ update_player:                  ; (*player, *controls)
         cmp byte [bx + player.invtime], 0
         je .invskip
 
-        dec byte [bx + player.invtime]
+        dec byte [bx + player.invtime] ; update player invincibility state
 .invskip:
 
         mov sp, bp
@@ -265,6 +266,7 @@ can_enter:                      ; (byte x, byte y, dir): bool
 .dx equ -4
         mov [bp + .dx], dx
 
+        ; find coordinates after move
         mov al, [bp + .x]
         mov [bp + .xn], al
         mov al, [bp + .y]
@@ -284,6 +286,7 @@ can_enter:                      ; (byte x, byte y, dir): bool
 .down:  inc byte [bp + .yn]
         jmp .none
 .none:
+        ; test for going out of the level
         cmp byte [bp + .xn], 0
         jl .no
         cmp byte [bp + .xn], Level_Width
@@ -293,6 +296,7 @@ can_enter:                      ; (byte x, byte y, dir): bool
         cmp byte [bp + .yn], Level_Height
         jge .no
 
+        ; find the address of the destination tile
         movzx ax, byte [bp + .yn]
         xor dx, dx
         mov bx, Level_Width
@@ -301,6 +305,7 @@ can_enter:                      ; (byte x, byte y, dir): bool
         movzx ax, byte [bp + .xn]
         add si, ax
 
+        ; check if it's passable
         movzx bx, byte [tile_map + si]
         shl bx, 1
         mov bx, [tiles + bx]
@@ -309,6 +314,7 @@ can_enter:                      ; (byte x, byte y, dir): bool
         test al, al
         jz .no
 
+        ; check if there's a bomb placed there
         mov al, [bp + .xn]
         mov ah, [bp + .yn]
 
@@ -336,6 +342,7 @@ can_enter:                      ; (byte x, byte y, dir): bool
         pop bp
         ret
 
+;; Place a bomb at given position
 place_bomb:                     ; (x, y, player)
         push bp
         mov bp, sp
@@ -354,6 +361,7 @@ place_bomb:                     ; (x, y, player)
         pop bp
         ret
 
+        ; a free slot in bombs array found
 .found: mov word [bx + sprite.sprite], sprite_bomb
         mov al, [bp + .x]
         mov [bx + sprite.x], al
@@ -371,16 +379,25 @@ place_bomb:                     ; (x, y, player)
         pop bp
         ret
 
+;; Draw information about player (at the moment just health)
 draw_player_stats:              ; (*player, y)
         push bp
         mov bp, sp
-        sub sp, sprite.size + 4
+        sub sp, sprite.size + 6
 .player equ 4
 .y equ 6
 .i equ -2
-.sprite equ -sprite.size - 2
-.a0 equ -sprite.size - 4
+.ds equ -4
+.sprite equ -sprite.size - 4
+.a0 equ -sprite.size - 6
 
+        mov ax, ds
+        mov es, ax
+        mov [bp + .ds], ax      ; save ds
+        mov ax, ss
+        mov ds, ax
+
+        ; initialize the sprite struct allocated on stack
         mov word [bp + .sprite + sprite.sprite], heart
         mov byte [bp + .sprite + sprite.dir], 0
         mov al, [bp + .y]
@@ -388,7 +405,7 @@ draw_player_stats:              ; (*player, y)
         mov byte [bp + .sprite + sprite.x], Level_Width + 2
 
         mov bx, [bp + .player]
-        mov al, [bx + player.lives]
+        mov al, [es:bx + player.lives]
         mov [bp + .i], al
 
 .loop:  cmp byte [bp + .i], 0
@@ -396,17 +413,20 @@ draw_player_stats:              ; (*player, y)
 
         dec byte [bp + .i]
         lea ax, [bp + .sprite]
-        mov [bp + .a0], ax
+        mov [bp + .a0], ax      ; sprite
         call draw_sprite
 
         inc byte [bp + .sprite + sprite.x]
         jmp .loop
 
-.exit:  mov sp, bp
+.exit:  mov ax, [bp + .ds]
+        mov ds, ax              ; restore ds
+
+        mov sp, bp
         pop bp
         ret
 
-
+;; Update all bombs
 update_bombs:                   ; ()
         push bp
         mov bp, sp
@@ -420,21 +440,21 @@ update_bombs:                   ; ()
 
 .loop:  mov bx, [bp + .ptr]
         cmp word [bx], 0
-        jz .continue
+        jz .continue            ; don't do anything if there's no bomb stored there
 
         dec byte [bx + bomb.ticks]
-        jnz .continue
+        jnz .continue           ; if the timer hasn't reached 0, we're done
 
         mov si, [bx + bomb.player]
-        inc byte [si + player.bombsrem]
+        inc byte [si + player.bombsrem] ; let the player place bombs again
 
-        mov word [bx + sprite.sprite], 0
+        mov word [bx + sprite.sprite], 0 ; mark the spot as unused
         mov al, [bx + sprite.x]
-        mov [bp + .a0], al
+        mov [bp + .a0], al      ; x
         mov al, [bx + sprite.y]
-        mov [bp + .a0 + 1], al
+        mov [bp + .a0 + 1], al  ; y
         mov al, [bx + bomb.range]
-        mov [bp + .a0 + 2], al
+        mov [bp + .a0 + 2], al  ; range
         call explode
 
 .continue:
@@ -446,6 +466,7 @@ update_bombs:                   ; ()
         pop bp
         ret
 
+;; Make an explosion at the given point with given range
 explode:                        ; (x, y, range)
         push bp
         mov bp, sp
@@ -465,14 +486,15 @@ explode:                        ; (x, y, range)
         mov bx, ax
         mov byte [explosion_tiles + bx], Explosion_Duration
 
+        ; cast an explosion ray in each of four directions
 .loop:  mov al, [bp + .x]
-        mov [bp + .a0], al
+        mov [bp + .a0], al      ; x
         mov al, [bp + .y]
-        mov [bp + .a0 + 1], al
+        mov [bp + .a0 + 1], al  ; y
         mov al, [bp + .range]
-        mov [bp + .a0 + 2], al
+        mov [bp + .a0 + 2], al  ; range
         mov al, [bp + .d]
-        mov [bp + .a0 + 3], al
+        mov [bp + .a0 + 3], al  ; dir
         call explode_ray
 
         inc byte [bp + .d]
@@ -483,6 +505,7 @@ explode:                        ; (x, y, range)
         pop bp
         ret
 
+;; Cast a straight ray of explosion in given direction
 explode_ray:                    ; (x, y, range, dir)
         push bp
         mov bp, sp
@@ -494,7 +517,9 @@ explode_ray:                    ; (x, y, range, dir)
 
         movzx cx, byte [bp + .range]
 
-.loop:  movzx bx, byte [bp + .dir]
+.loop:
+        ; step in given direction and check for level boundary
+        movzx bx, byte [bp + .dir]
         shl bx, 1
         mov ax, [cs:.lut + bx]
         jmp ax
@@ -514,12 +539,14 @@ explode_ray:                    ; (x, y, range, dir)
         jae .break
         jmp .none
 .none:
+        ; calculate map tile address
         movzx ax, byte [bp + .y]
         mov bl, Level_Width
         mul bl
         add al, [bp + .x]
         movzx bx, al
 
+        ; check if tile is destructible
         movzx si, byte [tile_map + bx]
         shl si, 1
         mov si, [tiles + si]
@@ -528,8 +555,8 @@ explode_ray:                    ; (x, y, range, dir)
         test al, al
         jz .break
 
-        mov byte [tile_map + bx], 0
-        mov byte [explosion_tiles + bx], Explosion_Duration
+        mov byte [tile_map + bx], 0 ; destroy tile
+        mov byte [explosion_tiles + bx], Explosion_Duration ; set the tile on fire
 
         loop .loop
 .break:
@@ -537,6 +564,7 @@ explode_ray:                    ; (x, y, range, dir)
         pop bp
         ret
 
+;; Update explosion timers
 update_explosion_tiles:         ; ()
         mov cx, Level_Width * Level_Height
 .loop:  mov bx, cx
