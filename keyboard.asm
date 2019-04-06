@@ -19,6 +19,10 @@ kb_init:
         xor ax, ax
         mov es, ax
 
+        mov ax, [es:9 * 4]
+        mov [original_kbint], ax
+        mov ax, [es:9 * 4 + 2]
+        mov [original_kbint + 2], ax
         mov word [es:9 * 4], kbint
         mov word [es:9 * 4 + 2], cs
 
@@ -131,3 +135,5 @@ key_down: db 0
 key_right: db 0
 key_up: db 0
 key_ent: db 0
+
+original_kbint: dw 0, 0

@@ -72,7 +72,60 @@ start:
 
         call update_bombs
 
+        cmp byte [player1 + player.lives], 0
+        je .player2_won
+
+        cmp byte [player2 + player.lives], 0
+        je .player1_won
+
         jmp .loop
+
+.player1_won:
+        mov bx, player1_winmsg
+        jmp .show_win_msg
+.player2_won:
+        mov bx, player2_winmsg
+.show_win_msg:
+
+        push bp
+        push es
+        mov ax, ds
+        mov es, ax
+        mov bp, bx              ; string pointer
+        mov ax, 0x1301          ; write string, move cursor, attribute in bl
+        mov bx, 0x000c          ; page 0, light red on black background
+        mov cx, winmsg.length
+        mov dx, 0x0a05          ; coordinates
+        int 0x10
+        pop es
+        pop bp
+
+.endloop1:
+        cmp byte [key_space], 0
+        jne .endloop1
+.endloop2:
+        cmp byte [key_space], 0
+        je .endloop2
+
+        mov ax, 0x0003          ; set the video mode back to default text mode
+        int 0x10
+
+        xor ax, ax
+        mov es, ax
+
+        mov ax, [original_kbint] ; restore the original keyboard interrupt handler
+        mov [es:9 * 4], ax
+        mov ax, [original_kbint + 2]
+        mov [es:9 * 4 + 2], ax
+
+        xor ax, ax              ; Finish program
+        int 0x21
+
+player1_winmsg:
+        db "Player 1 won!"
+        winmsg.length equ $ - player1_winmsg
+player2_winmsg:
+        db "Player 2 won!"
 
 update_player:                  ; (*player, *controls)
         push bp
@@ -548,7 +601,7 @@ tile_block:
         times Tile_Width * Tile_Height db 0
 
 tile_brick:
-        db 0, 1                   ; passable, destructible
+        db 0, 1                 ; passable, destructible
         times Tile_Width * Tile_Height db 0
 
 tile_ground:
