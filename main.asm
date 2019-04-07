@@ -622,22 +622,6 @@ player2:
 
 bombs:  times Max_Bomb_Count * bomb.size db 0
 
-
-tile_block:
-        db 0                    ; passable
-        db 0                    ; destructible
-        times Tile_Width * Tile_Height db 0
-
-tile_brick:
-        db 0, 1                 ; passable, destructible
-        times Tile_Width * Tile_Height db 0
-
-tile_ground:
-        db 1, 1                 ; passable, destructible
-        times Tile_Width * Tile_Height db 0
-
-sprite_bomb: times 16 * 16 db 0
-
 tiles:
         dw tile_ground, tile_block, tile_brick
 

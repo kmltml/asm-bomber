@@ -15,19 +15,21 @@ Keyboard_port equ 0x60
 
         SC_Push_Mask equ 0x80
 
+;; Initialize the keyboard interrupt handler
 kb_init:
         xor ax, ax
         mov es, ax
 
-        mov ax, [es:9 * 4]
+        mov ax, [es:9 * 4]      ; save the original interrupt vector
         mov [original_kbint], ax
         mov ax, [es:9 * 4 + 2]
         mov [original_kbint + 2], ax
-        mov word [es:9 * 4], kbint
+        mov word [es:9 * 4], kbint ; install the custom interrupt handler
         mov word [es:9 * 4 + 2], cs
 
         ret
 
+;; Keyboard interrupt handler routine
 kbint:  push ax
         push bx
 
@@ -36,9 +38,9 @@ kbint:  push ax
         mov bx, [cs:.state]
         jmp bx
 
-.state0:
-        cmp al, SC_EXT
-        jne .s0
+.state0:                        ; primary state
+        cmp al, SC_EXT          ; when extension scancode is received
+        jne .s0                 ; go to state 1
         mov word [cs:.state], .state1
         jmp .quit
 
@@ -74,8 +76,8 @@ kbint:  push ax
         mov bx, key_ent
         jmp .set
 
-.state1:
-        mov word [cs:.state], .state0
+.state1:                        ; state after receiving extension scancode
+        mov word [cs:.state], .state0 ; go back to primary state
         mov ah, al
         or ah, SC_Push_Mask
 
@@ -102,12 +104,12 @@ kbint:  push ax
         and al, SC_Push_Mask
         test al, al
         jnz .skip
-        inc ah
+        inc ah                  ; set ah to 1
 .skip:  mov [cs:bx], ah
         jmp .quit
 
 .quit:
-        mov al, 0x20
+        mov al, 0x20            ; signal completion of interrupt handling
         out 0x20, al
 
         pop bx

@@ -1,3 +1,4 @@
+;; Load a single sprite from a file with given name to memory at dest
 load_sprite:                    ; (name, dest)
         push bp
         mov bp, sp
@@ -67,6 +68,7 @@ load_sprite:                    ; (name, dest)
         pop bp
         ret
 
+;; Load all sprites as defined in sprite_files
 load_sprites:                   ; ()
         push bp
         mov bp, sp
@@ -76,34 +78,37 @@ load_sprites:                   ; ()
 .a0 equ -8
         mov word [bp + .i], sprite_files
 
-        mov ax, ds
+        mov ax, ds              ; prepare es for string scans
         mov es, ax
 
 .loop:  mov di, [bp + .i]
-        cmp word [di], 0
+        cmp word [di], 0        ; check if we've reached the end of sprite file list
         jz .exit
 
         cld
 
-        mov [bp + .a0], di
+        mov [bp + .a0], di      ; name
 
         mov cx, 0xffff
         xor al, al
-        repnz scasb
+        repnz scasb             ; find the end of filename marked with a zero byte
 
         mov ax, [di]
-        mov [bp + .a0 + 2], ax
+        mov [bp + .a0 + 2], ax  ; dest
         lea ax, [di + 2]
         mov [bp + .i], ax
 
         push word .loop
-        jmp load_sprite
+        jmp load_sprite         ; tail call, jumps to .loop on return
 
 .exit:  pop es
         mov sp, bp
         pop bp
         ret
 
+;; List of sprites to load, as list of zero-terminated filenames
+;; each followed by a word pointer to pixel buffer. Empty filename
+;; (a zero byte) marks the end of this list.
 sprite_files:
         db "bomb.bmp", 0
         dw sprite_bomb
